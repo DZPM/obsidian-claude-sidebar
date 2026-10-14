@@ -6991,9 +6991,9 @@ var RENAMED_BACKENDS = {
   gemini: "agy",
   antigravity: "agy",
 };
-// "Additional CLIs" setting: one executable name or path per line, e.g. a
-// wrapper script. The name is spliced into `shell -lc`, so it can't contain
-// spaces or shell syntax. Arguments belong in that provider's flags box.
+// "Additional CLIs" setting: one command per line, e.g. a wrapper script or
+// `claude --model opus`. The first word is the executable (checked on PATH);
+// the rest are arguments. The line is spliced into `shell -lc` as typed.
 var CUSTOM_CLI_PATTERN = /^[A-Za-z0-9~\/][A-Za-z0-9._~\/\\:-]*$/;
 function parseCustomClis(text) {
   const builtIn = new Set([
@@ -7004,10 +7004,11 @@ function parseCustomClis(text) {
   const backends = {};
   const rejected = [];
   for (const raw of (text || "").split("\n")) {
-    const name = raw.trim();
+    const name = raw.trim().replace(/\s+/g, " ");
     if (!name || name.startsWith("#")) continue;
+    const [binary, ...args] = name.split(" ");
     let reason = null;
-    if (!CUSTOM_CLI_PATTERN.test(name)) reason = "use letters, digits, and . _ - / ~ only, no spaces";
+    if (!CUSTOM_CLI_PATTERN.test(binary)) reason = "command must start with letters, digits, and . _ - / ~ only";
     else if (builtIn.has(name)) reason = "already built in";
     else if (name in Object.prototype) reason = "reserved name";
     else if (backends[name]) reason = "listed twice";
@@ -7015,11 +7016,12 @@ function parseCustomClis(text) {
       rejected.push({ name, reason });
       continue;
     }
-    const short = name.split(/[\\/]/).pop() || name;
+    const short = [binary.split(/[\\/]/).pop() || binary, ...args].join(" ");
     backends[name] = {
       label: name,
       short,
-      binary: name,
+      binary,
+      command: name,
       pathHints: [],
       yoloFlag: null,
       resumeFlag: null,
@@ -8337,7 +8339,7 @@ var TerminalView = class extends import_obsidian.ItemView {
     const backendKey = this.getBackendKey();
     const backend = this.plugin.getBackends()[backendKey];
     this.activeBackendKey = backendKey;
-    let cliCmd = backend.binary;
+    let cliCmd = backend.command || backend.binary;
     if (yoloMode && backend.yoloFlag) cliCmd += " " + backend.yoloFlag;
     const flagsByProvider = this.plugin.pluginData.flagsByProvider || {};
     const additionalFlags = flagsByProvider[backendKey] || null;
@@ -8484,7 +8486,7 @@ var TerminalView = class extends import_obsidian.ItemView {
     if (isWindows && cliFound) {
       setTimeout(() => {
         if (this.proc && !this.proc.killed) {
-          let winCmd = backend.binary;
+          let winCmd = backend.command || backend.binary;
           if (yoloMode && backend.yoloFlag) winCmd += ' ' + backend.yoloFlag;
           if (additionalFlags) winCmd += ' ' + additionalFlags;
           this.proc.stdin?.write(winCmd + '\r');
