@@ -93,6 +93,7 @@ https://github.com/user-attachments/assets/de98439a-8a1f-4a8a-9d02-44027d756462
   - **Send file path to agent** / **Send selection to agent**
 - Press `Shift+Enter` for multi-line input
 - Set your own hotkeys in Settings → Hotkeys
+- More space between terminal lines: add a CSS snippet with `body { --claude-sidebar-line-height: 1.2; }` (default 1.0)
 
 ## Platform Support
 

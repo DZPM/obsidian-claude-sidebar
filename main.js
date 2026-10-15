@@ -7657,6 +7657,24 @@ var TerminalView = class extends import_obsidian.ItemView {
       this.fit();
     }
   }
+  // Line height comes from a CSS snippet, not a setting: --claude-sidebar-line-height: 1.2;
+  // Default 1.0. Clamped to 1.0-2.0.
+  getLineHeight() {
+    const raw = this.termHost ? getComputedStyle(this.termHost).getPropertyValue("--claude-sidebar-line-height") : "";
+    const n = parseFloat(raw);
+    return Number.isFinite(n) ? Math.min(2, Math.max(1, n)) : 1;
+  }
+  applyLineHeight() {
+    if (!this.term) return;
+    const next = this.getLineHeight();
+    if (this.term.options.lineHeight === next) return;
+    this.term.options.lineHeight = next;
+    if (this._fitInProgress) {
+      this._pendingResize = true;
+    } else {
+      this.fit();
+    }
+  }
   initTerminal() {
     if (!this.termHost)
       return;
@@ -7664,6 +7682,7 @@ var TerminalView = class extends import_obsidian.ItemView {
       cursorBlink: true,
       copyOnSelect: true,
       fontSize: this.plugin.getFontSize(),
+      lineHeight: this.getLineHeight(),
       fontFamily: "Menlo, Monaco, 'Cascadia Mono', 'Cascadia Code', Consolas, 'Courier New', 'Microsoft YaHei', 'SimHei', 'PingFang SC', 'Noto Sans CJK SC', 'WenQuanYi Micro Hei', monospace",
       theme: this.getThemeColors(),
       scrollback: 10000,
@@ -8124,6 +8143,8 @@ var TerminalView = class extends import_obsidian.ItemView {
     this.themeObserver.observe(document.body, { attributes: true, attributeFilter: ["class"] });
     // Watch for Obsidian layout changes (sidebar resize, etc.)
     this.registerEvent(this.app.workspace.onLayoutChange(() => this.debouncedFit()));
+    // Snippet toggled or edited: pick up a new line height
+    this.registerEvent(this.app.workspace.on("css-change", () => this.applyLineHeight()));
   }
   // Resolve a candidate string to a real vault file, or null. Absolute/home paths and
   // URLs are skipped. Falls back to basename linkpath resolution (e.g. a bare note name).
