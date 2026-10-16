@@ -7793,7 +7793,15 @@ var TerminalView = class extends import_obsidian.ItemView {
           links.push({
             text: url,
             range: { start: { x: m.index + 1, y }, end: { x: m.index + url.length, y } },
-            activate: () => {
+            activate: (e) => {
+              // When the CLI tracks the mouse, xterm also reports this click to it. Claude
+              // Code opens a link on Ctrl+click, so opening it here too gives two tabs.
+              // A click that forces selection (Shift, or Option on Mac when enabled) is not
+              // reported, so open that one here.
+              const forced = process.platform === "darwin"
+                ? !!e?.altKey && !!this.term?.options.macOptionClickForcesSelection
+                : !!e?.shiftKey;
+              if (this.term?.modes.mouseTrackingMode !== "none" && !!e?.ctrlKey && !forced) return;
               try { require("electron").shell.openExternal(url); }
               catch (_) { window.open(url, "_blank"); }
             }
