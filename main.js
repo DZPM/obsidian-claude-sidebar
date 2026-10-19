@@ -8165,22 +8165,21 @@ var TerminalView = class extends import_obsidian.ItemView {
     if (dest instanceof import_obsidian.TFile) return dest;
     return null;
   }
-  // Open (or focus, if already open) a vault file in a markdown leaf — never replaces the
-  // terminal leaf. Mirrors the leaf-selection logic in toggleFocus().
+  // Open a vault file in a new tab, or focus its tab if it is already open. Never replaces
+  // the note in an existing tab (the user may not be looking at it) or the terminal leaf.
   async openVaultFile(file) {
-    const mdLeaves = this.app.workspace.getLeavesOfType("markdown");
-    const already = mdLeaves.find((l) => l.view?.file?.path === file.path);
+    // Any file view (markdown, image, PDF, ...), not sidebar panes like outline or backlinks.
+    let already = null;
+    this.app.workspace.iterateAllLeaves((l) => {
+      if (!already && l.view?.navigation && l.view.file?.path === file.path) already = l;
+    });
     if (already) {
       this.app.workspace.setActiveLeaf(already, { focus: true });
       return;
     }
-    const target = mdLeaves.filter((l) => !l.pinned)[0] || mdLeaves[0];
-    if (target) {
-      await target.openFile(file);
-      this.app.workspace.setActiveLeaf(target, { focus: true });
-    } else {
-      await this.app.workspace.getLeaf(true).openFile(file);
-    }
+    const leaf = this.app.workspace.getLeaf("tab");
+    await leaf.openFile(file);
+    this.app.workspace.setActiveLeaf(leaf, { focus: true });
   }
   fit() {
     if (!this.term || !this.fitAddon) return;
